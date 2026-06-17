@@ -21,10 +21,15 @@ VALID_TRANSITIONS = {
 
 
 class InvalidStatusTransition(Exception):
-    def __init__(self, current, target):
+    def __init__(self, current, target, allowed):
         self.current = current
         self.target = target
-        super().__init__(f"Invalid status transition: {current} → {target}")
+        self.allowed = list(allowed) if allowed else []
+        if self.allowed:
+            msg = f"状态流转不合法：不能从「{current}」直接变更为「{target}」。当前可选择的状态：{', '.join(self.allowed)}"
+        else:
+            msg = f"状态流转不合法：当前故障工单已处于「{current}」终态，不能再追加任何跟踪记录。"
+        super().__init__(msg)
 
 
 def list_faults():
@@ -58,7 +63,7 @@ def create_tracking_log(payload):
     target_status = payload["status"]
     allowed = VALID_TRANSITIONS.get(current_status)
     if allowed is None or target_status not in allowed:
-        raise InvalidStatusTransition(current_status, target_status)
+        raise InvalidStatusTransition(current_status, target_status, allowed)
     log = RepairTracking(
         action=payload["action"],
         handler=payload["handler"],

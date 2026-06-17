@@ -77,13 +77,37 @@ async function submit() {
   } catch (err) {
     try {
       const parsed = JSON.parse(err.message)
-      if (parsed.current && parsed.target) {
-        errorMessage.value = `状态流转不合法：不能从「${parsed.current}」直接变更为「${parsed.target}」`
+      if (parsed.error) {
+        errorMessage.value = parsed.error
+        if (parsed.allowed && parsed.allowed.length > 0) {
+          errorMessage.value += ` 当前可选择的状态：${parsed.allowed.join('、')}`
+        }
+      } else if (parsed.current && parsed.target) {
+        let msg = `状态流转不合法：不能从「${parsed.current}」直接变更为「${parsed.target}」。`
+        if (parsed.allowed && parsed.allowed.length > 0) {
+          msg += `当前可选择的状态：${parsed.allowed.join('、')}`
+        } else {
+          msg += `当前故障工单已处于终态，不能再追加任何跟踪记录。`
+        }
+        errorMessage.value = msg
       } else {
-        errorMessage.value = parsed.error || err.message
+        errorMessage.value = parsed.error || parsed.message || '提交失败，请稍后重试'
       }
     } catch {
-      errorMessage.value = err.message || '提交失败，请稍后重试'
+      const raw = err.message || ''
+      if (raw.includes('Failed to fetch') || raw.includes('NetworkError')) {
+        errorMessage.value = '网络连接失败，请检查网络后重试'
+      } else if (raw.includes('500') || raw.includes('502') || raw.includes('503')) {
+        errorMessage.value = '服务器暂时无法处理请求，请稍后重试'
+      } else if (raw.includes('404')) {
+        errorMessage.value = '请求的资源不存在，请刷新页面后重试'
+      } else if (raw.includes('401') || raw.includes('403')) {
+        errorMessage.value = '没有权限执行该操作，请重新登录'
+      } else if (raw.trim()) {
+        errorMessage.value = raw
+      } else {
+        errorMessage.value = '提交失败，请稍后重试'
+      }
     }
   } finally {
     submitting.value = false

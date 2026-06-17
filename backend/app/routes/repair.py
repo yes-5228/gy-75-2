@@ -33,7 +33,7 @@ def add_tracking():
     try:
         return create_tracking_log(request.get_json() or {}), 201
     except InvalidStatusTransition as exc:
-        return jsonify({"error": str(exc), "current": exc.current, "target": exc.target}), 400
+        return jsonify({"error": str(exc), "current": exc.current, "target": exc.target, "allowed": exc.allowed}), 400
 
 
 @bp.get("/statistics")
