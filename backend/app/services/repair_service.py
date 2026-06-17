@@ -8,6 +8,24 @@ from app.repositories.base import commit
 OPEN_STATUSES = {"Pending", "In Progress", "Review", "待受理", "处理中", "待复核"}
 DONE_STATUSES = {"Completed", "已完成"}
 
+VALID_TRANSITIONS = {
+    "Pending": {"In Progress", "Review"},
+    "In Progress": {"Review", "Completed", "In Progress"},
+    "Review": {"In Progress", "Completed", "Review"},
+    "Completed": set(),
+    "待受理": {"处理中", "待复核"},
+    "处理中": {"待复核", "已完成", "处理中"},
+    "待复核": {"处理中", "已完成", "待复核"},
+    "已完成": set(),
+}
+
+
+class InvalidStatusTransition(Exception):
+    def __init__(self, current, target):
+        self.current = current
+        self.target = target
+        super().__init__(f"Invalid status transition: {current} → {target}")
+
 
 def list_faults():
     faults = FaultReport.query.order_by(FaultReport.reported_at.desc()).all()
@@ -35,15 +53,20 @@ def list_tracking_logs(fault_id=None):
 
 
 def create_tracking_log(payload):
+    fault = FaultReport.query.get_or_404(payload["faultId"])
+    current_status = fault.status
+    target_status = payload["status"]
+    allowed = VALID_TRANSITIONS.get(current_status)
+    if allowed is None or target_status not in allowed:
+        raise InvalidStatusTransition(current_status, target_status)
     log = RepairTracking(
         action=payload["action"],
         handler=payload["handler"],
-        status=payload["status"],
+        status=target_status,
         cost=float(payload.get("cost", 0) or 0),
         fault_id=payload["faultId"],
     )
-    fault = FaultReport.query.get_or_404(payload["faultId"])
-    fault.status = payload["status"]
+    fault.status = target_status
     db.session.add(log)
     db.session.commit()
     return log.to_dict()

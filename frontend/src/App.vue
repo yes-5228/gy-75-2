@@ -12,6 +12,7 @@ import RepairTrackingView from './views/RepairTrackingView.vue'
 const activeView = ref('dashboard')
 const loading = ref(false)
 const error = ref('')
+const trackingError = ref('')
 
 const state = reactive({
   communities: [],
@@ -88,8 +89,18 @@ async function createFault(payload) {
 }
 
 async function createTracking(payload) {
-  await repairApi.createTracking(payload)
-  await loadAll()
+  trackingError.value = ''
+  try {
+    await repairApi.createTracking(payload)
+    await loadAll()
+  } catch (err) {
+    try {
+      const parsed = JSON.parse(err.message)
+      trackingError.value = parsed.error || err.message
+    } catch {
+      trackingError.value = err.message
+    }
+  }
 }
 
 onMounted(loadAll)
@@ -135,6 +146,7 @@ onMounted(loadAll)
       v-else
       :faults="state.faults"
       :logs="state.tracking"
+      :error="trackingError"
       @create="createTracking"
     />
   </AppShell>

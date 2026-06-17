@@ -1,6 +1,7 @@
-from flask import Blueprint, request
+from flask import Blueprint, jsonify, request
 
 from app.services.repair_service import (
+    InvalidStatusTransition,
     create_fault,
     create_tracking_log,
     list_faults,
@@ -29,7 +30,10 @@ def tracking():
 
 @bp.post("/tracking")
 def add_tracking():
-    return create_tracking_log(request.get_json() or {}), 201
+    try:
+        return create_tracking_log(request.get_json() or {}), 201
+    except InvalidStatusTransition as exc:
+        return jsonify({"error": str(exc), "current": exc.current, "target": exc.target}), 400
 
 
 @bp.get("/statistics")
