@@ -349,6 +349,19 @@ th {
   color: #9b3228;
 }
 
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 a {
   color: #1472a6;
 }
