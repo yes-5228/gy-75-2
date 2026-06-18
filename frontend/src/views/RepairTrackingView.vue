@@ -66,6 +66,7 @@ async function submit() {
       faultId: Number(form.faultId),
       cost: Number(form.cost),
     })
+    errorMessage.value = ''
     Object.assign(form, {
       faultId: '',
       action: '',
@@ -77,11 +78,8 @@ async function submit() {
   } catch (err) {
     try {
       const parsed = JSON.parse(err.message)
-      if (parsed.error) {
+      if (parsed.error && typeof parsed.error === 'string' && hasChinese(parsed.error)) {
         errorMessage.value = parsed.error
-        if (parsed.allowed && parsed.allowed.length > 0) {
-          errorMessage.value += ` 当前可选择的状态：${parsed.allowed.join('、')}`
-        }
       } else if (parsed.current && parsed.target) {
         let msg = `状态流转不合法：不能从「${parsed.current}」直接变更为「${parsed.target}」。`
         if (parsed.allowed && parsed.allowed.length > 0) {
@@ -91,10 +89,10 @@ async function submit() {
         }
         errorMessage.value = msg
       } else {
-        errorMessage.value = parsed.error || parsed.message || '提交失败，请稍后重试'
+        errorMessage.value = '操作失败，请稍后重试'
       }
     } catch {
-      const raw = err.message || ''
+      const raw = (err.message || '').toString()
       if (raw.includes('Failed to fetch') || raw.includes('NetworkError')) {
         errorMessage.value = '网络连接失败，请检查网络后重试'
       } else if (raw.includes('500') || raw.includes('502') || raw.includes('503')) {
@@ -103,15 +101,17 @@ async function submit() {
         errorMessage.value = '请求的资源不存在，请刷新页面后重试'
       } else if (raw.includes('401') || raw.includes('403')) {
         errorMessage.value = '没有权限执行该操作，请重新登录'
-      } else if (raw.trim()) {
-        errorMessage.value = raw
       } else {
-        errorMessage.value = '提交失败，请稍后重试'
+        errorMessage.value = '操作失败，请稍后重试'
       }
     }
   } finally {
     submitting.value = false
   }
+}
+
+function hasChinese(text) {
+  return /[\u4e00-\u9fa5]/.test(text)
 }
 </script>
 
