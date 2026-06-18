@@ -24,6 +24,8 @@ const VALID_TRANSITIONS = {
   已完成: [],
 }
 
+const DONE_STATUSES = ['Completed', '已完成']
+
 const form = reactive({
   faultId: '',
   action: '',
@@ -34,6 +36,10 @@ const form = reactive({
 
 const submitting = ref(false)
 const errorMessage = ref('')
+
+const openFaults = computed(() => {
+  return props.faults.filter(f => !DONE_STATUSES.includes(f.status))
+})
 
 const allowedStatuses = computed(() => {
   if (!form.faultId) return ['In Progress']
@@ -78,7 +84,7 @@ async function submit() {
   } catch (err) {
     try {
       const parsed = JSON.parse(err.message)
-      if (parsed.error && typeof parsed.error === 'string' && hasChinese(parsed.error)) {
+      if (parsed.error && typeof parsed.error === 'string' && parsed.error.trim()) {
         errorMessage.value = parsed.error
       } else if (parsed.current && parsed.target) {
         let msg = `状态流转不合法：不能从「${parsed.current}」直接变更为「${parsed.target}」。`
@@ -109,10 +115,6 @@ async function submit() {
     submitting.value = false
   }
 }
-
-function hasChinese(text) {
-  return /[\u4e00-\u9fa5]/.test(text)
-}
 </script>
 
 <template>
@@ -125,7 +127,7 @@ function hasChinese(text) {
           <span>Fault ticket</span>
           <select v-model="form.faultId" required @change="onFaultChange" :disabled="submitting">
             <option value="" disabled>Select fault ticket</option>
-            <option v-for="fault in faults" :key="fault.id" :value="fault.id">
+            <option v-for="fault in openFaults" :key="fault.id" :value="fault.id">
               #{{ fault.id }} {{ fault.elevatorCode }} - {{ fault.faultType }} - {{ fault.status }}
             </option>
           </select>
